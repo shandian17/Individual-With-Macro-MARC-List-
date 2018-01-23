@@ -1,3 +1,7 @@
+'Required manual work:
+'   1. For C1241, there is at least one record need to be categorized as "Legit" and moved to "All Open Item List"
+'   2. Some records (mostly old) need to be removed from "AllOpenItemList" based on Anthea's comments on (Jan 8th or before)
+
 Option Explicit
 Dim SourceFilePath As String
 Dim ReferenceFilePath As String
@@ -232,9 +236,7 @@ Sub StartProcessing()
         Cells(I, 1) = CStr(Cells(I, MonthYear))           'Category in general
         
         If Cells(I, BillMtd) = 1 Or Cells(I, BillMtd) = 2 Then
-            If (Cells(I, CompId) <> 409 And (Cells(I, TreatyId) <> 836 Or Cells(I, TreatyId) <> 837)) Or _
-            (Cells(I, CompId) <> 1506 And (Cells(I, TreatyId) <> 1170 Or Cells(I, TreatyId) <> 1171)) Or _
-            (Cells(I, CompId) <> 1241 And (Cells(I, TreatyId) <> 422 Or Cells(I, TreatyId) <> 542 Or Cells(I, TreatyId) <> 570 Or Cells(I, TreatyId) <> 1056 Or _
+            If (Cells(I, CompId) <> 1241 And (Cells(I, TreatyId) <> 422 Or Cells(I, TreatyId) <> 542 Or Cells(I, TreatyId) <> 570 Or Cells(I, TreatyId) <> 1056 Or _
             Cells(I, TreatyId) <> 1389 Or Cells(I, TreatyId) <> 1811 Or Cells(I, TreatyId) <> 1813 Or Cells(I, TreatyId) <> 1817 Or Cells(I, TreatyId) <> 1819)) Then
             Cells(I, Extract) = "Extract"
             End If
@@ -379,8 +381,9 @@ Skip:
     Progress.Hide
     
     ActiveSheet.Range("A1").CurrentRegion.AutoFilter Field:=Extract, Criteria1:="Extract"
-    ActiveSheet.Range("A1").CurrentRegion.Copy Sheets("CESS_DO NOT PREPROCESS").Range("A1")
-    Sheets("CESS_DO NOT PREPROCESS").Columns(Extract).EntireColumn.Delete
+    ActiveSheet.Range("A1").CurrentRegion.Copy Sheets("CESS_DO NOT REPROCESS").Range("A1")
+    ActiveSheet.Range("a2").CurrentRegion.Offset(1).Delete
+    'Sheets("CESS_DO NOT REPROCESS").Columns(Extract).EntireColumn.Delete
     ActiveSheet.ShowAllData
     ActiveSheet.Cells(1, 50).Clear
     ActiveSheet.Columns(Extract).EntireColumn.Delete
