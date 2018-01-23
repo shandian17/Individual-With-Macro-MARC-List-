@@ -1,0 +1,428 @@
+Option Explicit
+Dim SourceFilePath As String
+Dim ReferenceFilePath As String
+Dim StartWB As Workbook
+Dim StartWS As String
+Dim RefWS As String
+
+
+
+Sub SelectFile()
+
+UserForm1.Hide
+
+Dim intChoice As Integer
+Dim fOpen As FileDialog
+Dim ws As Worksheet
+
+Sheets("All Open Item").Select
+ActiveSheet.Cells.Clear
+ActiveSheet.Name = "All Open Item"
+
+Set StartWB = ActiveWorkbook
+StartWS = ActiveSheet.Name
+
+'### Clean Workbook ###'
+Application.DisplayAlerts = False
+For Each ws In Worksheets
+If ws.Name <> StartWS Then ws.Delete
+Next
+Application.DisplayAlerts = True
+
+Set fOpen = Application.FileDialog(msoFileDialogOpen)
+
+fOpen.AllowMultiSelect = False                          'only allow the user to select one file
+fOpen.Title = "Select Source File"
+
+intChoice = fOpen.Show    'make the file dialog visible to the user
+
+If intChoice <> 0 Then                                  'determine what choice the user made
+    SourceFilePath = fOpen.SelectedItems(1)     'get the file path selected by the user
+Debug.Print SourceFilePath
+Else: Exit Sub
+End If
+
+fOpen.Title = "Select Reference File"
+intChoice = fOpen.Show
+If intChoice <> 0 Then
+    ReferenceFilePath = fOpen.SelectedItems(1)
+Else: Exit Sub
+End If
+
+OpenSourceFile
+
+End Sub
+
+
+Sub OpenSourceFile()
+
+'Set StartWB = ActiveWorkbook
+'StartWS = ActiveWorkbook.ActiveSheet.Name
+'
+'
+'SourceFilePath = "\\atls007016.am.munichre.com\EDI\MARCUAT4\MARC Open Items\Wayland Macro Testing\GEC_OpenEstimates_20170630_V3.xlsx"
+
+    Workbooks.Open Filename:=SourceFilePath, ReadOnly:=True         'Open the source data file
+
+    Dim SheetName As String
+    Dim WorkBookName As String
+    Dim PriorDT As String
+    Dim ASLOBColNum As Integer
+    Dim DueDateColNum As Integer
+
+    SheetName = InputBox("Please set the correct sheet name", , "Export Worksheet")         'select the correct sheet
+    Sheets(SheetName).Select
+
+    '### Find the correct Column ###'
+    DueDateColNum = Rows(1).Find("DUE_DATE", lookat:=xlPart).Column
+    ASLOBColNum = Rows(1).Find("AS_LOB", lookat:=xlPart).Column
+
+    '### Serach the right column and apply filter ###'
+    With Rows(1).Find("DUE_DATE", lookat:=xlPart).Columns.EntireColumn
+        .TextToColumns Destination:=.Cells(1), DataType:=xlFixedWidth, FieldInfo:=Array(0, xlDMYFormat)         'Change the data to Date format for filtering
+    End With
+
+    PriorDT = InputBox("Enter the Date for Step2 in the following format", , "1-Jan-2016")          'define the filter data for step2
+
+    ActiveSheet.Range("A1").CurrentRegion.AutoFilter Field:=ASLOBColNum, Criteria1:=Array("AD", "AL", "OA", "OD", "OL"), Operator:=xlFilterValues           'step1
+    ActiveSheet.Range("A1").CurrentRegion.AutoFilter Field:=DueDateColNum, Criteria1:=">=" + PriorDT, Operator:=xlAnd            'step2
+
+
+    WorkBookName = ActiveWorkbook.Name
+
+    Sheets(SheetName).Range("A1").CurrentRegion.Copy StartWB.Sheets(StartWS).Range("E1")            'select all cells and paste
+
+    Windows(WorkBookName).Close (False)         'close the source file workbook
+
+    OpenReferenceFile
+    
+End Sub
+
+
+Sub OpenReferenceFile()
+
+    Dim ws As Worksheet
+    With ThisWorkbook
+        Set ws = .Sheets.Add(after:=.Sheets(.Sheets.Count))
+        ws.Name = "ReferenceFile"
+        Set ws = .Sheets.Add(after:=.Sheets(.Sheets.Count))
+        ws.Name = "Cess_DO NOT PREPROCESS"
+    End With
+
+    RefWS = "ReferenceFile"
+
+    Workbooks.Open Filename:=ReferenceFilePath, ReadOnly:=True         'Open the source data file
+
+    Dim SheetName As String
+    Dim WorkBookName As String
+    Dim Startrow As Integer
+
+    SheetName = InputBox("Please set the correct sheet name of the refence file", , "Self Admin")         'select the correct sheet
+    Sheets(SheetName).Select
+    Startrow = InputBox("Please indicate the row number of the Header", , "3") - 1
+
+    WorkBookName = ActiveWorkbook.Name
+
+    Sheets(SheetName).Range("A1").Offset(Startrow, 0).Resize(Cells(Startrow, 1).CurrentRegion.Rows.Count - Startrow, Cells(Startrow, 1).CurrentRegion.Columns.Count).Copy StartWB.Sheets(RefWS).Range("A1")       'select all cells and paste
+
+    Windows(WorkBookName).Close (False)         'close the source file workbook
+
+    Sheets(StartWS).Select
+
+    Progress.Show
+    
+End Sub
+
+
+Sub test()
+    Progress.Show vbModeless
+End Sub
+
+Sub StartProcessing()
+
+
+'refws = "ReferenceFile"
+
+    Dim LastRow As Integer
+    Dim LastColumn As Integer
+    Dim I As Integer
+    '### Dim all Column Nums ###'
+    Dim FactorType As Integer
+    Dim BillMtd As Integer
+    Dim TreatyId As Integer
+    Dim CompId As Integer
+    Dim MonthYear As Integer
+    Dim MtdUsed As Integer
+    Dim PeriodUsed As Integer
+    Dim SourceOfBill As Integer
+    Dim Files As Integer
+    Dim Comments As Integer
+    Dim Extract As Integer
+    Dim DueDate As Integer
+    Dim BillFreq As Integer
+    Dim BillMode As Integer
+    Dim Ceded As Integer
+    Dim PickUp As Integer
+    Dim UnstFmt As Integer
+    Dim UnstDataArea As Integer
+    Dim UnstDataLoc As Integer
+    Dim ReportNames As Integer
+
+       
+    
+    '### Assign new columns ###'
+    Range("A1") = "Category"
+    Range("B1") = "FleetNum"
+    Range("C1") = "FleetName"
+    Range("D1") = "TreatyStatus"
+    
+    LastColumn = Range("E1").CurrentRegion.Columns.Count
+    
+    Cells(1, LastColumn + 1) = "Month Year"
+    MonthYear = LastColumn + 1
+    Cells(1, LastColumn + 2) = "Method Used To Generate Estimate"
+    MtdUsed = LastColumn + 2
+    Cells(1, LastColumn + 3) = "Period Used To Generate Estimate"
+    PeriodUsed = LastColumn + 3
+    Cells(1, LastColumn + 4) = "Source of Billing - Month 2017"
+    SourceOfBill = LastColumn + 4
+    Cells(1, LastColumn + 5) = "Files"
+    Files = LastColumn + 5
+    Cells(1, LastColumn + 6) = "Comments"
+    Comments = LastColumn + 6
+    Cells(1, LastColumn + 7) = "UNSTRUC_DATA_PICK_UP_POINT"
+    PickUp = LastColumn + 7
+    Cells(1, LastColumn + 8) = "UNSTRUCTURED_DATA_FORMAT"
+    UnstFmt = LastColumn + 8
+    Cells(1, LastColumn + 9) = "UNSTRUCTURED_DATA_STORAGE_AREA"
+    UnstDataArea = LastColumn + 9
+    Cells(1, LastColumn + 10) = "UNSTRUC_DATA_RETRIEVAL_LOC"
+    UnstDataLoc = LastColumn + 10
+    Cells(1, LastColumn + 11) = "REPORT_NAMES"
+    ReportNames = LastColumn + 11
+    Cells(1, LastColumn + 12) = "ExtractInd"
+    Extract = LastColumn + 12
+    
+    
+       
+    
+    '### Find Correct Column Num ###'
+    FactorType = Rows(1).Find("FACTOR_TYPE", lookat:=xlPart).Column
+    BillMtd = Rows(1).Find("BILLING_METHOD", lookat:=xlPart).Column
+    TreatyId = Rows(1).Find("TREATY_ID", lookat:=xlPart).Column
+    DueDate = Rows(1).Find("DUE_DATE", lookat:=xlPart).Column
+    Ceded = Rows(1).Find("ASSUMED_CEDED_CODE", lookat:=xlPart).Column
+    BillFreq = Rows(1).Find("BILLING_FREQUENCY", lookat:=xlPart).Column
+    BillMode = Rows(1).Find("BILLING_MODE", lookat:=xlPart).Column
+    CompId = Rows(1).Find("COMPANY_ID", lookat:=xlPart).Column
+    
+    LastRow = ActiveSheet.Range("B1").CurrentRegion.Rows.Count
+    
+    For I = 2 To LastRow
+        
+        Indicator I, LastRow
+        
+        
+        If I = 4 Then
+            Stop
+        End If
+        
+        
+        Cells(I, MonthYear) = MonthName(Month(Cells(I, DueDate))) + "-" + CStr(Year(Cells(I, DueDate)))          'Month year
+        Cells(I, 1) = CStr(Cells(I, MonthYear))           'Category in general
+        
+        If Cells(I, BillMtd) = 1 Or Cells(I, BillMtd) = 2 Then
+            If (Cells(I, CompId) <> 409 And (Cells(I, TreatyId) <> 836 Or Cells(I, TreatyId) <> 837)) Or _
+            (Cells(I, CompId) <> 1506 And (Cells(I, TreatyId) <> 1170 Or Cells(I, TreatyId) <> 1171)) Or _
+            (Cells(I, CompId) <> 1241 And (Cells(I, TreatyId) <> 422 Or Cells(I, TreatyId) <> 542 Or Cells(I, TreatyId) <> 570 Or Cells(I, TreatyId) <> 1056 Or _
+            Cells(I, TreatyId) <> 1389 Or Cells(I, TreatyId) <> 1811 Or Cells(I, TreatyId) <> 1813 Or Cells(I, TreatyId) <> 1817 Or Cells(I, TreatyId) <> 1819)) Then
+            Cells(I, Extract) = "Extract"
+            End If
+        End If
+
+        If Cells(I, FactorType) <> "PR" And Cells(I, FactorType) <> "CO" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded" Else Cells(I, 1) = "Other Factor Types"
+            Cells(I, MtdUsed) = "Manual Adj"
+            Cells(I, PeriodUsed) = "N/A"
+
+                
+        ElseIf (Cells(I, BillMtd) = 1 Or Cells(I, BillMtd) = 2) And _
+            ((Cells(I, CompId) = 409 And (Cells(I, TreatyId) = 836 Or Cells(I, TreatyId) = 837)) Or _
+            (Cells(I, CompId) = 1506 And (Cells(I, TreatyId) = 1170 Or Cells(I, TreatyId) = 1171))) Then
+            Cells(I, 1) = "Legit Cession"
+            Cells(I, MtdUsed) = "Manual Adj"
+            Cells(I, PeriodUsed) = "N/A"
+            
+        
+        ElseIf Cells(I, BillFreq) = "M" And Cells(I, BillMode) = "M" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "Use Last Due Date Received"
+            Cells(I, PeriodUsed) = MonthName(Month(Cells(I, DueDate)) - 1) + "-" + CStr(Year(Cells(I, DueDate)))
+            
+        ElseIf Cells(I, BillFreq) = "M" And Cells(I, BillMode) = "A" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "Use Same Due Date of Previous Year"
+            Cells(I, PeriodUsed) = MonthName(Month(Cells(I, DueDate))) + "-" + CStr(Year(Cells(I, DueDate)) - 1)
+            
+        ElseIf Cells(I, BillFreq) = "M" And Cells(I, BillMode) = "O" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "No Estimate Generated"
+            Cells(I, PeriodUsed) = "N/A"
+            
+        ElseIf Cells(I, BillFreq) = "M" And Cells(I, BillMode) = "S" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "Use Average of last six months' (or less if not available)"
+            Cells(I, PeriodUsed) = MonthName(Month(DateAdd("m", -6, Cells(I, DueDate)))) + "-" + CStr(Year(DateAdd("m", -6, Cells(I, DueDate))))          'Note the period of the data be available may be less than 6 months. The code will still calculate it as 6 month anyway
+        
+        ElseIf (Cells(I, BillFreq) = "Q" And Cells(I, BillMode) = "M") Or (Cells(I, BillFreq) = "Q" And Cells(I, BillMode) = "Q") Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "Use average of last two due dates received"
+            Cells(I, PeriodUsed) = MonthName(Month(DateAdd("m", -3, Cells(I, DueDate)))) + "-" + CStr(Year(DateAdd("m", -3, Cells(I, DueDate)))) + _
+                " And " + MonthName(Month(DateAdd("m", -6, Cells(I, DueDate)))) + "-" + CStr(Year(DateAdd("m", -6, Cells(I, DueDate))))
+        
+        ElseIf Cells(I, BillFreq) = "Q" And Cells(I, BillMode) = "A" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "Use Same due date of previous year"
+            Cells(I, PeriodUsed) = MonthName(Month(Cells(I, DueDate))) + "-" + CStr(Year(Cells(I, DueDate)) - 1)
+        
+        ElseIf Cells(I, BillFreq) = "A" And Cells(I, BillMode) = "A" Then
+            If Cells(I, Ceded) = "C" Then Cells(I, 1) = "Ceded"
+            Cells(I, MtdUsed) = "Use last due date received"
+            Cells(I, PeriodUsed) = MonthName(Month(Cells(I, DueDate))) + "-" + CStr(Year(Cells(I, DueDate)) - 1)
+        End If
+        
+        If (Cells(I, 32) Like "N*" And Cells(I, 34) Like "N*") Or (Cells(I, 32) Like "SU*" And Cells(I, 34) Like "N*") Then
+            Cells(I, MtdUsed) = "Manual Adj"
+            Cells(I, PeriodUsed) = "N/A"
+        End If
+            
+
+        
+
+        
+        On Error GoTo Err_Handler
+        
+        '### Define RowNum from the ref file ###'
+        Dim RowNum As Integer
+        Cells(1, 50).FormulaArray = "=MATCH(" + CStr(Cells(I, CompId)) + "&" + CStr(Cells(I, TreatyId)) + "," + RefWS + "!d:d&" + RefWS + "!F:F,0)"
+        RowNum = Cells(1, 50).Value
+
+        '### FleetNum, FleetName, TreatyStatus ###'
+        Cells(I, 2) = Sheets(RefWS).Cells(RowNum, 2)          'FleetID
+        Cells(I, 3) = Sheets(RefWS).Cells(RowNum, 3)          'FleetName
+        Cells(I, 4) = Sheets(RefWS).Cells(RowNum, 7)          'TreatyStatus
+        
+        '### Source of Billing ###'
+        Dim EmptyField As Boolean
+        EmptyField = True
+        If Sheets(RefWS).Cells(RowNum, 21) = "Yes" Then
+            Cells(I, SourceOfBill) = "Electronic"
+            EmptyField = False
+        End If
+        If Sheets(RefWS).Cells(RowNum, 22) = "Yes" Then
+            If EmptyField = True Then
+                Cells(I, SourceOfBill) = "Excel"
+                EmptyField = False
+            Else: Cells(I, SourceOfBill) = Cells(I, SourceOfBill).Value + " & Excel"
+            End If
+        End If
+        If Sheets(RefWS).Cells(RowNum, 23) = "Yes" Then
+            If EmptyField = True Then
+                Cells(I, SourceOfBill) = "Unstructured"
+            Else: Cells(I, SourceOfBill) = Cells(I, SourceOfBill).Value + " & Unstructured"
+            End If
+        ElseIf Sheets(RefWS).Cells(RowNum, 23) <> "Yes" And EmptyField = True Then
+            Cells(I, SourceOfBill) = "N/A"
+        End If
+        
+        '### Files ###'
+        EmptyField = True
+        If Sheets(RefWS).Cells(RowNum, 24).Value <> "" Then
+            Cells(I, Files) = Sheets(RefWS).Cells(RowNum, 24).Value
+            EmptyField = False
+        End If
+        If Sheets(RefWS).Cells(RowNum, 25).Value <> "" Then
+            If EmptyField = True Then
+                Cells(I, Files) = Sheets(RefWS).Cells(RowNum, 25).Value
+                EmptyField = False
+            Else: Cells(I, Files) = Cells(I, Files).Value + ", " + Sheets(RefWS).Cells(RowNum, 25).Value
+            End If
+        ElseIf Sheets(RefWS).Cells(RowNum, 25).Value = "" And EmptyField = True Then
+            Cells(I, Files) = "N/A"
+        End If
+        
+
+        '### Comments ###'
+        If Sheets(RefWS).Cells(RowNum, 26).Value <> "" Then Cells(I, Comments) = Sheets(RefWS).Cells(RowNum, 26).Value Else Cells(I, Comments) = "N/A"
+
+        '### Unstructured Data Pick Up Point ###'
+        If Sheets(RefWS).Cells(RowNum, 27).Value <> "" Then Cells(I, PickUp) = Sheets(RefWS).Cells(RowNum, 27).Value Else Cells(I, PickUp) = "N/A"
+    
+        '### Unstructured Data Data Format###'
+        If Sheets(RefWS).Cells(RowNum, 28).Value <> "" Then Cells(I, UnstFmt) = Sheets(RefWS).Cells(RowNum, 28).Value Else Cells(I, UnstFmt) = "N/A"
+        
+        '### Unstructured Data Storage Area ###'
+        If Sheets(RefWS).Cells(RowNum, 29).Value <> "" Then Cells(I, UnstDataArea) = Sheets(RefWS).Cells(RowNum, 29).Value Else Cells(I, UnstDataArea) = "N/A"
+        
+        '### Unstructured Data Retrieval Location ###'
+        If Sheets(RefWS).Cells(RowNum, 30).Value <> "" Then Cells(I, UnstDataLoc) = Sheets(RefWS).Cells(RowNum, 30).Value Else Cells(I, UnstDataLoc) = "N/A"
+
+        '### Report Names ###'
+        If Sheets(RefWS).Cells(RowNum, 31).Value <> "" Then Cells(I, ReportNames) = Sheets(RefWS).Cells(RowNum, 31).Value Else Cells(I, ReportNames) = "N/A"
+        
+
+
+Skip:
+    Debug.Print I
+    Next I
+    
+    Progress.Hide
+    
+    ActiveSheet.Range("A1").CurrentRegion.AutoFilter Field:=Extract, Criteria1:="Extract"
+    ActiveSheet.Range("A1").CurrentRegion.Copy Sheets("CESS_DO NOT PREPROCESS").Range("A1")
+    Sheets("CESS_DO NOT PREPROCESS").Columns(Extract).EntireColumn.Delete
+    ActiveSheet.ShowAllData
+    ActiveSheet.Cells(1, 50).Clear
+    ActiveSheet.Columns(Extract).EntireColumn.Delete
+    
+    
+    EndProcess
+    
+    Exit Sub
+            
+
+
+Err_Handler:
+    If Err.Number = 13 Then
+        Cells(I, SourceOfBill) = "Record not found"
+        Cells(I, Files) = "Record not found"
+        Cells(I, Comments) = "Record not found"
+        Cells(I, 2) = "Record not found"
+        Cells(I, 3) = "Record not found"
+        Cells(I, 4) = "Record not found"
+        Resume Skip
+    Else: On Error GoTo 0
+    End If
+    
+
+End Sub
+
+
+Sub Indicator(I As Integer, LastRow As Integer)
+
+        Progress.Label1.Caption = Int(I / LastRow * 100) & "% Completed"
+        Progress.Bar.Width = I / LastRow * 204
+        
+        DoEvents
+End Sub
+
+
+Sub EndProcess()
+    Dim Address As Variant
+    Application.DisplayAlerts = False
+    Sheets(RefWS).Delete
+    ThisWorkbook.CheckCompatibility = False
+    Address = Application.GetSaveAsFilename("OpenItem.xlsx", "Excel Files (*.xlsx), *.xlsx")
+    ThisWorkbook.SaveAs Filename:=Address, FileFormat:=xlOpenXMLWorkbook, CreateBackup:=False
+    Application.DisplayAlerts = True
+End Sub
